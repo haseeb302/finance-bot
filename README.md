@@ -3,9 +3,11 @@
 A RAG-based financial chatbot built with FastAPI, DynamoDB, OpenAI, and Pinecone. Features JWT authentication, chat persistence, and scalable vector search for financial knowledge.
 
 ## Flow
+
 <img width="931" height="614" alt="image" src="https://github.com/user-attachments/assets/9d2f14da-71ac-4f6c-a6e4-c1351012c857" />
 
 ## Rough DB Schema
+
 <img width="622" height="595" alt="image" src="https://github.com/user-attachments/assets/06318005-723f-461c-837a-92a0476eb0d9" />
 
 ## 🏗️ Architecture
@@ -327,33 +329,10 @@ aws logs tail /ecs/financebot --follow
 
 ### Health Checks
 
-```bash
+````bash
 # Health check endpoint
 curl https://your-domain.com/health
 
-# Expected response
-{"status": "healthy", "timestamp": "2025-01-19T10:00:00Z"}
-```
-
-## 🔧 Environment Variables Reference
-
-### Required Variables
-
-| Variable              | Description         | Example                 |
-| --------------------- | ------------------- | ----------------------- |
-| `SECRET_KEY`          | JWT secret key      | `your-super-secret-key` |
-| `OPENAI_API_KEY`      | OpenAI API key      | `sk-...`                |
-| `PINECONE_API_KEY`    | Pinecone API key    | `...`                   |
-| `PINECONE_INDEX_NAME` | Pinecone index name | `financebot-embeddings` |
-
-### Optional Variables
-
-| Variable                       | Default | Description             |
-| ------------------------------ | ------- | ----------------------- |
-| `DYNAMODB_TABLE_PREFIX`        | `""`    | Table name prefix       |
-| `ACCESS_TOKEN_EXPIRE_MINUTES`  | `2`     | Access token expiry     |
-| `REFRESH_TOKEN_EXPIRE_MINUTES` | `5`     | Refresh token expiry    |
-| `DEFAULT_PAGE_SIZE`            | `3`     | Default pagination size |
 
 ## 🚨 Troubleshooting
 
@@ -367,7 +346,7 @@ curl https://your-domain.com/health
 
    # Check DynamoDB endpoint
    aws dynamodb list-tables --endpoint-url http://localhost:8001
-   ```
+````
 
 2. **Pinecone Connection Failed**
 
@@ -401,37 +380,3 @@ aws dynamodb describe-table --table-name users --endpoint-url http://localhost:8
 # Test API endpoints
 curl -X GET http://localhost:8000/health
 ```
-
-## 📈 Performance Optimization
-
-### DynamoDB Optimization
-
-- Use appropriate read/write capacity
-- Implement pagination for large datasets
-- Use GSI for complex queries
-- Enable TTL for automatic cleanup
-
-### Application Optimization
-
-- Use connection pooling for external APIs
-- Implement caching for frequently accessed data
-- Use async/await for I/O operations
-- Monitor memory usage and optimize
-
-## 🔒 Security Best Practices
-
-1. **Environment Variables**: Use AWS Secrets Manager
-2. **HTTPS**: Always use SSL/TLS in production
-3. **CORS**: Restrict allowed origins
-4. **Rate Limiting**: Implement API rate limiting
-5. **Input Validation**: Validate all user inputs
-6. **Logging**: Log security events
-7. **Updates**: Keep dependencies updated
-
-## 📝 Development Notes
-
-- Tables are created automatically on first run
-- Local development uses in-memory DynamoDB
-- Production uses AWS DynamoDB with persistent storage
-- All operations are asynchronous for better performance
-- JWT tokens are stateless but refresh tokens are stored in sessions table
