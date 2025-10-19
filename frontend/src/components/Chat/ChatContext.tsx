@@ -96,31 +96,12 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         page_size: CONSTANTS.DEFAULT_PAGE_SIZE,
       });
 
-      console.log(
-        `Loading messages - Page: ${page}, Messages: ${response.messages.length}, HasNext: ${response.has_next}`
-      );
-
       if (page === 1) {
-        // First page: show newest messages first (backend returns newest first)
-        console.log(
-          "First page - setting messages:",
-          response.messages.map((m) => m.content.substring(0, 20))
-        );
         setMessages(response.messages); // Backend already returns newest first
       } else {
-        // Load more: add older messages to the TOP (beginning of array)
-        // Backend returns older messages in chronological order
-        console.log(
-          "Load more - adding messages:",
-          response.messages.map((m) => m.content.substring(0, 20))
-        );
         setMessages((prev) => {
           // Add older messages to the beginning (they're already in chronological order)
           const newMessages = [...response.messages, ...prev];
-          console.log(
-            "Combined messages:",
-            newMessages.map((m) => m.content.substring(0, 20))
-          );
           return newMessages;
         });
       }
@@ -314,9 +295,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                 // Network error, retry
                 retryCount++;
                 if (retryCount <= maxRetries) {
-                  console.log(
-                    `Network error, retrying... (${retryCount}/${maxRetries})`
-                  );
                   await new Promise((resolve) =>
                     setTimeout(resolve, 1000 * retryCount)
                   ); // Exponential backoff

@@ -89,7 +89,6 @@ export class AuthService {
     try {
       await api.post(API_ENDPOINTS.AUTH.LOGOUT);
     } catch (error) {
-      // Don't throw error for logout, just log it
       console.warn("Logout error:", error);
     }
   }

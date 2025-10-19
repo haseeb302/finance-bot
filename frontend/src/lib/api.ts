@@ -16,15 +16,11 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const tokens = getStoredTokens();
-    console.log("API Request - Stored tokens:", tokens);
     if (tokens?.access_token) {
       config.headers.Authorization = `Bearer ${tokens.access_token}`;
-      console.log(
-        "API Request - Authorization header added:",
-        config.headers.Authorization
-      );
     } else {
-      console.log("API Request - No access token found");
+      clearStoredTokens();
+      window.location.href = "/";
     }
     return config;
   },

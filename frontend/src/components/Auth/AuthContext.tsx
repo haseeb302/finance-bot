@@ -117,22 +117,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       try {
         const tokens = await AuthService.signin(credentials);
-        console.log("Signin successful, tokens received:", tokens);
 
         // Store tokens first
         storage.set(STORAGE_KEYS.TOKENS, tokens);
-        console.log("Tokens stored in localStorage");
 
         // Then try to get current user
         const currentUser = await AuthService.getCurrentUser();
-        console.log("Current user fetched:", currentUser);
 
         // Store user data
         storage.set(STORAGE_KEYS.USER, currentUser);
-        console.log("User data stored in localStorage");
 
         setUser(currentUser);
-        console.log("User state updated:", currentUser);
 
         // Navigate to chat page after successful login
         navigate("/chat");

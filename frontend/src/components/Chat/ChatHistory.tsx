@@ -29,7 +29,6 @@ const ChatHistory: React.FC = () => {
         ) : (
           <ul className="space-y-1 p-2">
             {chats.map((chat) => {
-              console.log("Chat data:", chat);
               return (
                 <li
                   key={chat.id}
