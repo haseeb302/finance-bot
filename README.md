@@ -2,6 +2,12 @@
 
 A RAG-based financial chatbot built with FastAPI, DynamoDB, OpenAI, and Pinecone. Features JWT authentication, chat persistence, and scalable vector search for financial knowledge.
 
+## Flow
+<img width="931" height="614" alt="image" src="https://github.com/user-attachments/assets/9d2f14da-71ac-4f6c-a6e4-c1351012c857" />
+
+## Rough DB Schema
+<img width="622" height="595" alt="image" src="https://github.com/user-attachments/assets/06318005-723f-461c-837a-92a0476eb0d9" />
+
 ## 🏗️ Architecture
 
 - **Backend**: FastAPI with async/await
@@ -425,7 +431,6 @@ aws dynamodb describe-table --table-name users --endpoint-url http://localhost:8
 
 # Test API endpoints
 curl -X GET http://localhost:8000/health
-curl -X POST http://localhost:8000/auth/signin -H "Content-Type: application/json" -d '{"email":"test@example.com","password":"password"}'
 ```
 
 ## 📈 Performance Optimization
