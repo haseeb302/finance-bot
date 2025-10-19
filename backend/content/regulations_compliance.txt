@@ -1,0 +1,22 @@
+Regulations and Compliance
+
+Know Your Customer (KYC) Requirements
+KYC regulations require us to verify your identity and understand your financial activities. This includes collecting personal information, verifying your identity with government-issued documents, and monitoring your account for unusual activity. These requirements help prevent money laundering and terrorist financing.
+
+Anti-Money Laundering (AML) Policies
+We're required to monitor transactions for suspicious activity that might indicate money laundering. This includes reporting large cash transactions, unusual patterns, or transactions involving high-risk countries. We may request additional information about certain transactions to comply with AML regulations.
+
+Data Privacy and GDPR Compliance
+We protect your personal data in accordance with GDPR and other privacy regulations. You have the right to access, correct, or delete your personal information. We only collect data necessary for our services and never sell your information to third parties. You can manage your privacy settings in your account preferences.
+
+Tax Reporting Requirements
+We provide necessary tax documents including 1099 forms for interest earned and transaction summaries. These documents are available in your account by January 31st each year. Keep records of all transactions for your tax preparation. Consult a tax professional for specific tax advice.
+
+Regulatory Updates
+We regularly update our policies and procedures to comply with changing financial regulations. We'll notify you of any significant changes that affect your account or services. Stay informed about regulatory updates through our website, email notifications, and account alerts.
+
+Compliance Monitoring
+Our systems continuously monitor transactions and account activity to ensure compliance with all applicable regulations. This includes automated checks for suspicious patterns, unusual transaction amounts, and high-risk activities. We may contact you for additional information to maintain compliance.
+
+Consumer Protection
+We adhere to all consumer protection laws and regulations to ensure fair and transparent financial services. This includes clear disclosure of fees, terms, and conditions, as well as protection against unfair or deceptive practices. Contact our support team if you have concerns about our compliance with consumer protection standards.

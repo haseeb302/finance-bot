@@ -1,0 +1,22 @@
+Security and Fraud Prevention
+
+Recognizing Phishing Attempts
+Be cautious of emails or messages claiming to be from our company that ask for personal information, passwords, or payment details. We will never ask for your password via email or text. Always verify the sender's email address and look for spelling errors or suspicious links. When in doubt, contact us directly through our official channels.
+
+What to Do If You Suspect Fraud
+If you notice unauthorized transactions or suspect fraudulent activity, immediately contact our fraud department at 1-800-FRAUD-HELP or through the 'Report Fraud' option in your account. We'll freeze your account to prevent further unauthorized access and investigate the issue. You're protected by our zero-liability policy for unauthorized transactions.
+
+Password Security Best Practices
+Use a strong, unique password with at least 12 characters including uppercase letters, lowercase letters, numbers, and special characters. Avoid using personal information or common words. Consider using a password manager to generate and store secure passwords. Change your password regularly and never share it with anyone.
+
+Account Monitoring and Alerts
+Set up account alerts to receive notifications for transactions over a certain amount, login attempts from new devices, or any account changes. You can customize these alerts via email, SMS, or push notifications. Regular monitoring helps you quickly identify and report any suspicious activity.
+
+Device Security
+Keep your devices updated with the latest security patches and use antivirus software. Avoid using public WiFi for financial transactions. Log out of your account when using shared devices and enable device management features to monitor and control access to your account.
+
+Identity Theft Protection
+We offer identity theft protection services including credit monitoring, dark web scanning, and identity restoration assistance. These services help detect and prevent identity theft before it affects your financial accounts. Contact our support team to learn more about available protection services.
+
+Secure Communication
+Always use our official website and mobile app for account access. Never share your account information through unsecured channels. We use end-to-end encryption for all communications and store your data securely using industry-standard security measures.

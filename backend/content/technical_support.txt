@@ -1,0 +1,25 @@
+Technical Support and Troubleshooting
+
+Mobile App Troubleshooting
+If the app crashes or won't load, try closing and reopening it, then restart your device. Ensure you have the latest version from the App Store or Google Play. Check your internet connection and try switching between WiFi and cellular data. If problems persist, clear the app cache in your device settings.
+
+Browser Compatibility Issues
+Our web platform works best with Chrome, Firefox, Safari, or Edge browsers. Clear your browser cache and cookies, disable browser extensions temporarily, and ensure JavaScript is enabled. If you're still experiencing issues, try using an incognito or private browsing window.
+
+Login Problems and Solutions
+If you can't log in, verify your email and password are correct. Check if Caps Lock is on and ensure you're using the right account. Try the 'Forgot Password' option to reset your password. If you're still locked out, contact support with your account email and a description of the issue.
+
+Transaction Processing Delays
+Most transactions process within 1-3 business days. Delays can occur due to bank processing times, weekends, holidays, or security reviews. If a transaction is taking longer than expected, check the transaction status in your account. Contact support if a transaction is pending for more than 5 business days.
+
+Notification and Alert Issues
+If you're not receiving notifications, check your notification settings in your account preferences. Ensure your email address and phone number are correct and up-to-date. Check your spam folder for emails. For push notifications, ensure they're enabled in your device settings and the app has permission to send notifications.
+
+System Maintenance and Outages
+We occasionally perform scheduled maintenance to improve our services. We'll notify you in advance of any planned maintenance that might affect your account access. During maintenance, some features may be temporarily unavailable. Check our status page for real-time updates on system availability.
+
+Performance Optimization
+If you're experiencing slow loading times or performance issues, try clearing your browser cache, closing unnecessary tabs, or restarting your device. Ensure you have a stable internet connection. For mobile users, try switching between WiFi and cellular data to see if the issue persists.
+
+Data Backup and Recovery
+We automatically backup your account data and transaction history. In case of data loss or corruption, we can restore your information from our secure backups. Contact our technical support team if you notice any missing or incorrect data in your account.
