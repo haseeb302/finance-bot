@@ -3,9 +3,10 @@ import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import ChatHistory from "./ChatHistory";
 import { useChat } from "./ChatContext";
-import { useAuth } from "../Auth/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { PlusCircle } from "lucide-react";
 import toast from "react-hot-toast";
+
 const ChatInterface = () => {
   const {
     currentChat,

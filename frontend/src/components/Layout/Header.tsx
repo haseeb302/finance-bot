@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useAuth } from "../Auth/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import AuthDialog from "../Auth/AuthDialog";
 
 const Header = () => {

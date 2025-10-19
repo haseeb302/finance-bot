@@ -2,7 +2,6 @@ import {
   useEffect,
   useState,
   createContext,
-  useContext,
   ReactNode,
   useCallback,
 } from "react";
@@ -24,14 +23,6 @@ interface AuthContextType {
   clearError: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -195,11 +186,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     clearError,
   };
 
-  // Debug logging for user state changes
-  useEffect(() => {
-    console.log("AuthContext - User state changed:", user);
-    console.log("AuthContext - Is authenticated:", !!user);
-  }, [user]);
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined
+);

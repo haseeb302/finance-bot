@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import { config, STORAGE_KEYS } from "./config";
-import { ApiError, RequestConfig, ResponseConfig } from "../types/api";
+import { ApiError, RequestConfig } from "../types/api";
 import { TokenResponse } from "../types/auth";
 
 // Create axios instance
@@ -100,7 +100,13 @@ const refreshTokens = async (refreshToken: string): Promise<TokenResponse> => {
 const transformError = (error: unknown): ApiError => {
   if (error && typeof error === "object" && "response" in error) {
     const axiosError = error as {
-      response: { data?: { detail?: string; type?: string }; status: number };
+      response: {
+        data?: {
+          detail?: string;
+          type?: string;
+        };
+        status: number;
+      };
     };
     return {
       detail: axiosError.response.data?.detail || "An error occurred",
@@ -145,15 +151,24 @@ export const apiRequest = async <T = unknown>(
 
 // HTTP method helpers
 export const api = {
-  get: <T = any>(url: string, config?: AxiosRequestConfig) =>
+  get: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
     apiClient.get<T>(url, config),
-  post: <T = any>(url: string, data?: any, config?: AxiosRequestConfig) =>
-    apiClient.post<T>(url, data, config),
-  put: <T = any>(url: string, data?: any, config?: AxiosRequestConfig) =>
-    apiClient.put<T>(url, data, config),
-  patch: <T = any>(url: string, data?: any, config?: AxiosRequestConfig) =>
-    apiClient.patch<T>(url, data, config),
-  delete: <T = any>(url: string, config?: AxiosRequestConfig) =>
+  post: <T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ) => apiClient.post<T>(url, data, config),
+  put: <T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ) => apiClient.put<T>(url, data, config),
+  patch: <T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ) => apiClient.patch<T>(url, data, config),
+  delete: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
     apiClient.delete<T>(url, config),
 };
 

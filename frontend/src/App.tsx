@@ -5,9 +5,10 @@ import Header from "./components/Layout/Header";
 import { HomePage, ChatPage } from "./pages";
 import ProtectedRoute from "./components/Layout/ProtectedRoute";
 import GuestRoute from "./components/Layout/GuestRoute";
-import { AuthProvider, useAuth } from "./components/Auth/AuthContext";
+import { AuthProvider } from "./components/Auth/AuthContext";
 import { ChatProvider } from "./components/Chat/ChatContext";
 import ErrorBoundary from "./components/Layout/ErrorBoundary";
+import { useAuth } from "./hooks/useAuth";
 
 // Create a client
 const queryClient = new QueryClient({

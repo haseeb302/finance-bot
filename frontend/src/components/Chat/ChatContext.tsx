@@ -6,7 +6,7 @@ import {
   ReactNode,
   useCallback,
 } from "react";
-import { useAuth } from "../Auth/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { Chat, Message, ChatMessageRequest } from "../../types/chat";
 import { ChatService } from "../../services/chatService";
 import { getErrorMessage } from "../../lib/utils";

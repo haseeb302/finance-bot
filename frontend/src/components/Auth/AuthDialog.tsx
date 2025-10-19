@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { X, Loader2, Eye, EyeOff } from "lucide-react";
 import { loginSchema, LoginFormData } from "../../lib/validation";
 import toast from "react-hot-toast";
