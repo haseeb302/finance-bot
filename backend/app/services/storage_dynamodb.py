@@ -7,6 +7,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from uuid import uuid4
 import structlog
+from boto3.dynamodb.conditions import Key, Attr
 
 from app.services.dynamodb import dynamodb_service
 from app.core.settings import settings
@@ -328,38 +329,156 @@ class DynamoDBStorageService:
         # Simplified implementation
         return True
 
-    # Refresh token operations (simplified for now)
+    # Refresh token operations using sessions table
     async def create_refresh_token(
         self, token: str, user_id: str, expires_at: datetime
     ) -> Optional[Dict[str, Any]]:
-        """Create a refresh token."""
+        """Create a refresh token by updating session."""
         try:
-            refresh_token_dict = {
-                "token_id": str(uuid4()),
-                "token": token,
-                "user_id": user_id,
-                "expires_at": expires_at.isoformat(),
-                "is_revoked": False,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            }
+            # Find the most recent session for the user
+            sessions = await self.db.get_user_sessions(user_id)
+            if not sessions:
+                logger.error("No sessions found for user", user_id=user_id)
+                return None
 
-            # For now, we'll store refresh tokens in a simple way
-            # In production, you might want to use a separate table
-            logger.info("Refresh token created", user_id=user_id)
-            return refresh_token_dict
+            # Update the most recent session with refresh token
+            latest_session = sessions[
+                0
+            ]  # Assuming sessions are ordered by created_at desc
+            session_id = latest_session["session_id"]
+
+            # Update session with refresh token
+            success = await self.db.update_session(
+                session_id,
+                {"refresh_token": token, "expires_at": expires_at.isoformat()},
+            )
+
+            if success:
+                logger.info(
+                    "Refresh token created for session",
+                    session_id=session_id,
+                    user_id=user_id,
+                )
+                return {"session_id": session_id, "refresh_token": token}
+            else:
+                logger.error(
+                    "Failed to update session with refresh token", session_id=session_id
+                )
+                return None
+
         except Exception as e:
             logger.error("Failed to create refresh token", error=str(e))
             return None
 
     async def get_refresh_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Get refresh token."""
-        # Simplified implementation
-        return None
+        """Get refresh token from sessions table."""
+        try:
+            logger.info("Looking for refresh token", token=token[:20] + "...")
+
+            # Scan sessions table for refresh token
+            table = self.db.dynamodb.Table(self.db.get_table_name("sessions"))
+
+            # First, let's see what's in the sessions table
+            all_sessions = table.scan()
+            logger.info("All sessions in table", count=len(all_sessions["Items"]))
+
+            # Log all sessions to see what refresh tokens exist
+            for session in all_sessions["Items"]:
+                logger.info(
+                    "Session details",
+                    session_id=session["session_id"],
+                    user_id=session.get("user_id"),
+                    has_refresh_token="refresh_token" in session
+                    and session.get("refresh_token") is not None,
+                    refresh_token_preview=(
+                        session.get("refresh_token", "None")[:20] + "..."
+                        if session.get("refresh_token")
+                        else "None"
+                    ),
+                    is_active=session.get("is_active", False),
+                    expires_at=session.get("expires_at"),
+                )
+
+            response = table.scan(
+                FilterExpression=Attr("refresh_token").eq(token)
+                & Attr("is_active").eq(True)
+            )
+
+            logger.info("Refresh token scan result", count=len(response["Items"]))
+
+            if response["Items"]:
+                session = response["Items"][0]
+                logger.info(
+                    "Found refresh token session", session_id=session["session_id"]
+                )
+
+                # Check if session is still active (not expired)
+                session_expires_at = datetime.fromisoformat(
+                    session["expires_at"].replace("Z", "+00:00")
+                )
+                current_time = datetime.now(timezone.utc)
+
+                # Ensure both datetimes are timezone-aware
+                if session_expires_at.tzinfo is None:
+                    session_expires_at = session_expires_at.replace(tzinfo=timezone.utc)
+                if current_time.tzinfo is None:
+                    current_time = current_time.replace(tzinfo=timezone.utc)
+
+                logger.info(
+                    "Session expiry check",
+                    session_expires_at=session_expires_at.isoformat(),
+                    current_time=current_time.isoformat(),
+                    is_session_expired=session_expires_at <= current_time,
+                )
+
+                # Session should still be valid (refresh token expiry)
+                if session_expires_at > current_time:
+                    logger.info(
+                        "Session is valid, refresh token should be valid",
+                        session_id=session["session_id"],
+                    )
+                    return session
+                else:
+                    logger.info(
+                        "Session expired, refresh token no longer valid",
+                        session_id=session["session_id"],
+                    )
+                    return None
+            else:
+                logger.info(
+                    "Refresh token not found in sessions", token=token[:20] + "..."
+                )
+                return None
+
+        except Exception as e:
+            logger.error("Failed to get refresh token", error=str(e))
+            return None
 
     async def revoke_refresh_token(self, token: str) -> bool:
-        """Revoke a refresh token."""
-        # Simplified implementation
-        return True
+        """Revoke a refresh token by updating session."""
+        try:
+            # Find session with this refresh token
+            session = await self.get_refresh_token(token)
+            if not session:
+                return False
+
+            # Update session to remove refresh token and mark as inactive
+            success = await self.db.update_session(
+                session["session_id"], {"refresh_token": None, "is_active": False}
+            )
+
+            if success:
+                logger.info("Refresh token revoked", session_id=session["session_id"])
+                return True
+            else:
+                logger.error(
+                    "Failed to revoke refresh token", session_id=session["session_id"]
+                )
+                return False
+
+        except Exception as e:
+            logger.error("Failed to revoke refresh token", error=str(e))
+            return False
 
     # Session operations
     async def create_session(

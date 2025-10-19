@@ -64,8 +64,8 @@ class RAGService:
     def __init__(self):
         self.openai_service = openai_service
         self.pinecone_service = pinecone_service
-        self.default_top_k = 5
-        self.similarity_threshold = 0.3
+        self.default_top_k = settings.default_top_k
+        self.similarity_threshold = settings.similarity_threshold
 
     async def generate_response_with_rag(
         self,

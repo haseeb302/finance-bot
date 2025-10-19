@@ -3,59 +3,67 @@ from typing import List, Optional
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 class Settings(BaseSettings):
     # Application Configuration
     app_name: str = "FinanceBot API"
     app_version: str = "1.0.0"
     debug: bool = False
-    environment: str = "development"
+    environment: str = os.getenv("ENVIRONMENT")
 
     # DynamoDB Configuration
-    dynamodb_endpoint_url: str = "http://localhost:8000"  # For local development
-    dynamodb_region: str = "us-east-1"
-    dynamodb_access_key: str = "local"  # For local development
-    dynamodb_secret_key: str = "local"  # For local development
-    dynamodb_table_prefix: str = ""
+    dynamodb_endpoint_url: str = os.getenv("DYNAMODB_ENDPOINT_URL")
+    dynamodb_region: str = os.getenv("DYNAMODB_REGION")
+    dynamodb_access_key: str = os.getenv("DYNAMODB_ACCESS_KEY")
+    dynamodb_secret_key: str = os.getenv("DYNAMODB_SECRET_KEY")
+    dynamodb_table_prefix: str = os.getenv("DYNAMODB_TABLE_PREFIX")
 
     # JWT Configuration
-    secret_key: str = "your-super-secret-key-here-change-in-production"
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-    refresh_token_expire_days: int = 7
+    secret_key: str = os.getenv("SECRET_KEY")
+    algorithm: str = os.getenv("ALGORITHM")
+    access_token_expire_minutes: int = int(
+        os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "2")
+    )  # 2 minutes
+    refresh_token_expire_minutes: int = int(
+        os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES", "4")
+    )  # 5 minutes
 
     # OpenAI Configuration
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4-turbo-preview"
-    openai_embedding_model: str = "text-embedding-3-large"
+    openai_api_key: str = os.getenv("OPENAI_API_KEY")
+    openai_model: str = os.getenv("OPENAI_MODEL")
 
     # Pinecone Configuration
-    pinecone_api_key: str = ""
-    pinecone_index_name: str = "finance-bot"
+    pinecone_api_key: str = os.getenv("PINECONE_API_KEY")
+    pinecone_index_name: str = os.getenv("PINECONE_INDEX_NAME")
 
     # Redis Configuration
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = os.getenv("REDIS_URL")
 
     # CORS Configuration
-    allowed_origins: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-    ]
+    allowed_origins: List[str] = (
+        os.getenv("ALLOWED_ORIGINS").split(",") if os.getenv("ALLOWED_ORIGINS") else []
+    )
 
     # Rate Limiting
-    rate_limit_per_minute: int = 60
-    rate_limit_burst: int = 10
+    rate_limit_per_minute: int = os.getenv("RATE_LIMIT_PER_MINUTE")
+    rate_limit_burst: int = os.getenv("RATE_LIMIT_BURST")
 
     # AWS Configuration
-    aws_region: str = "us-east-1"
-    aws_access_key_id: str = ""
-    aws_secret_access_key: str = ""
+    aws_region: str = os.getenv("AWS_REGION")
+    aws_access_key_id: str = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     # Pagination
-    default_page_size: int = 3
-    max_page_size: int = 3
+    default_page_size: int = os.getenv("DEFAULT_PAGE_SIZE")
+    max_page_size: int = os.getenv("MAX_PAGE_SIZE")
+
+    # RAG
+    similarity_threshold: float = os.getenv("SIMILARITY_THRESHOLD")
+    default_top_k: int = os.getenv("DEFAULT_TOP_K")
 
     class Config:
         env_file = ".env.local"

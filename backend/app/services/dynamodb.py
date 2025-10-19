@@ -67,6 +67,7 @@ class DynamoDBService:
                 "financebot-users",
                 "financebot-chats",
                 "financebot-messages",
+                "financebot-sessions",
             ]
 
             for table_name in old_tables:

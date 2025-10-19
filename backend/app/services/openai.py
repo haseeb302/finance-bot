@@ -8,17 +8,17 @@ class OpenAIService:
     def __init__(self):
         self.client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
         self.model = settings.openai_model
-        self.embedding_model = settings.openai_embedding_model
+        # self.embedding_model = settings.openai_embedding_model
 
-    async def generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding for text using OpenAI."""
-        try:
-            response = await self.client.embeddings.create(
-                model=self.embedding_model, input=text
-            )
-            return response.data[0].embedding
-        except Exception as e:
-            raise Exception(f"Failed to generate embedding: {str(e)}")
+    # async def generate_embedding(self, text: str) -> List[float]:
+    #     """Generate embedding for text using OpenAI."""
+    #     try:
+    #         response = await self.client.embeddings.create(
+    #             model=self.embedding_model, input=text
+    #         )
+    #         return response.data[0].embedding
+    #     except Exception as e:
+    #         raise Exception(f"Failed to generate embedding: {str(e)}")
 
     async def generate_response(
         self,
@@ -97,20 +97,20 @@ class OpenAIService:
 
         return base_prompt
 
-    def count_tokens(self, text: str) -> int:
-        """Estimate token count in text (rough approximation)."""
-        # Rough estimation: 1 token ≈ 4 characters for English text
-        return len(text) // 4
+    # def count_tokens(self, text: str) -> int:
+    #     """Estimate token count in text (rough approximation)."""
+    #     # Rough estimation: 1 token ≈ 4 characters for English text
+    #     return len(text) // 4
 
-    async def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for multiple texts."""
-        try:
-            response = await self.client.embeddings.create(
-                model=self.embedding_model, input=texts
-            )
-            return [item.embedding for item in response.data]
-        except Exception as e:
-            raise Exception(f"Failed to generate batch embeddings: {str(e)}")
+    # async def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
+    #     """Generate embeddings for multiple texts."""
+    #     try:
+    #         response = await self.client.embeddings.create(
+    #             model=self.embedding_model, input=texts
+    #         )
+    #         return [item.embedding for item in response.data]
+    #     except Exception as e:
+    #         raise Exception(f"Failed to generate batch embeddings: {str(e)}")
 
 
 # Global instance

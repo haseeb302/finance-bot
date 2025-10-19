@@ -61,6 +61,13 @@ async def create_chat(
     chat_data: ChatCreate,
     current_user: Optional[dict] = Depends(get_current_user_optional_from_session),
 ):
+    """Get user's chats with pagination."""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to view chats",
+        )
+
     """Create a new chat."""
     try:
         chat = await storage_service.create_chat(
@@ -93,6 +100,13 @@ async def create_chat(
 async def get_chat(
     chat_id: str, current_user: Optional[dict] = Depends(get_current_user_optional)
 ):
+    """Get specific chat by ID."""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to view chat",
+        )
+
     """Get specific chat by ID."""
     try:
         chat = await storage_service.get_chat_by_id(chat_id)

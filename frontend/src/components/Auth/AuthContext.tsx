@@ -19,6 +19,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitializing: boolean; // New: for initial auth check
   error: string | null;
   clearError: () => void;
 }
@@ -34,6 +35,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -41,6 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        setIsInitializing(true);
         const savedUser = storage.get<User>(STORAGE_KEYS.USER);
         const savedTokens = storage.get(STORAGE_KEYS.TOKENS);
 
@@ -61,6 +64,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Clear any corrupted data
         storage.remove(STORAGE_KEYS.USER);
         storage.remove(STORAGE_KEYS.TOKENS);
+      } finally {
+        setIsInitializing(false);
       }
     };
 
@@ -185,6 +190,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logout,
     isAuthenticated: !!user,
     isLoading,
+    isInitializing,
     error,
     clearError,
   };

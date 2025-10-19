@@ -26,90 +26,6 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 security = HTTPBearer()
 
 
-@router.post(
-    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
-)
-async def register(user_data: UserCreate):
-    """Register a new user."""
-    # Check if user already exists
-    existing_user = await storage_service.get_user_by_email(user_data.email)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
-        )
-
-    # Hash password
-    hashed_password = get_password_hash(user_data.password)
-
-    # Create user
-    user = await storage_service.create_user(user_data, hashed_password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create user",
-        )
-
-    return UserResponse(
-        id=user["user_id"],
-        email=user["email"],
-        username=user.get("username"),
-        full_name=user.get("full_name"),
-        is_active=user.get("is_active", True),
-        created_at=user["created_at"],
-    )
-
-
-@router.post("/login", response_model=TokenResponse)
-async def login(login_data: LoginRequest):
-    """Login user and return tokens."""
-    # Get user by email
-    user = await storage_service.get_user_by_email(login_data.email)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-        )
-
-    # Verify password
-    from app.utils.auth import verify_password
-
-    if not verify_password(login_data.password, user["hashed_password"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-        )
-
-    if not user.get("is_active", True):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
-        )
-
-    # Update last login
-    await storage_service.update_user(
-        user["user_id"], {"last_login": datetime.utcnow().isoformat()}
-    )
-
-    # Create tokens
-    from app.utils.auth import create_access_token, create_refresh_token
-    from datetime import timedelta
-
-    access_token = create_access_token(data={"sub": user["user_id"]})
-    refresh_token = create_refresh_token(data={"sub": user["user_id"]})
-
-    # Store refresh token
-    await storage_service.create_refresh_token(
-        refresh_token, user["user_id"], datetime.utcnow() + timedelta(days=7)
-    )
-
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-        expires_in=settings.access_token_expire_minutes
-        * 60,  # Convert minutes to seconds
-    )
-
-
 @router.post("/signin", response_model=TokenResponse)
 async def signin(login_data: LoginRequest):
     """Unified signin endpoint - creates account if user doesn't exist, otherwise logs in."""
@@ -183,7 +99,10 @@ async def signin(login_data: LoginRequest):
             ip_address=None,  # Could be extracted from request
         )
 
-        expires_at = (datetime.utcnow() + timedelta(days=7)).isoformat()
+        # Use refresh token expiry for session expiry to keep them in sync
+        expires_at = (
+            datetime.utcnow() + timedelta(minutes=settings.refresh_token_expire_minutes)
+        ).isoformat()
         session = await storage_service.create_session(session_data, expires_at)
 
         if not session:
@@ -191,6 +110,10 @@ async def signin(login_data: LoginRequest):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create session",
             )
+
+        # Refresh token is already stored in the session during creation
+        print(f"Session created with refresh token: {session['session_id']}")
+        print(f"Refresh token: {refresh_token[:20]}...")
 
         return TokenResponse(
             access_token=access_token,
@@ -214,23 +137,36 @@ async def signin(login_data: LoginRequest):
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(refresh_data: RefreshTokenRequest):
     """Refresh access token using refresh token."""
+    print(f"Refresh token request received: {refresh_data.refresh_token[:20]}...")
+
     # Verify refresh token
     payload = verify_token(refresh_data.refresh_token, "refresh")
     user_id = payload.get("sub")
+    exp_time = payload.get("exp")
+    print(f"Refresh token payload user_id: {user_id}")
+    print(f"Refresh token expires at: {datetime.fromtimestamp(exp_time).isoformat()}")
+    print(f"Current time: {datetime.utcnow().isoformat()}")
+    print(f"Token expired: {datetime.fromtimestamp(exp_time) < datetime.utcnow()}")
 
     if not user_id:
+        print("No user_id in refresh token payload")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )
 
     # Check if refresh token exists in database
+    print("Checking refresh token in database...")
     refresh_token_obj = await storage_service.get_refresh_token(
         refresh_data.refresh_token
     )
     if not refresh_token_obj:
+        print("Refresh token not found in database - this is the issue!")
+        print(f"Looking for token: {refresh_data.refresh_token[:50]}...")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )
+
+    print(f"Refresh token found in database: {refresh_token_obj.get('session_id')}")
 
     # Get user
     user = await storage_service.get_user_by_id(user_id)
@@ -240,22 +176,20 @@ async def refresh_token(refresh_data: RefreshTokenRequest):
             detail="User not found or inactive",
         )
 
-    # Create new tokens
-    from app.utils.auth import create_access_token, create_refresh_token
+    # Create new access token only (don't renew refresh token)
+    from app.utils.auth import create_access_token
     from datetime import timedelta
 
     access_token = create_access_token(data={"sub": user_id})
-    new_refresh_token = create_refresh_token(data={"sub": user_id})
 
-    # Revoke old refresh token and create new one
-    await storage_service.revoke_refresh_token(refresh_data.refresh_token)
-    await storage_service.create_refresh_token(
-        new_refresh_token, user_id, datetime.utcnow() + timedelta(days=7)
-    )
+    # Keep the same refresh token and session expiry
+    # The refresh token should expire based on its original creation time
+    print(f"Refreshed access token for session {refresh_token_obj.get('session_id')}")
+    print(f"Refresh token will expire at: {refresh_token_obj.get('expires_at')}")
 
     return TokenResponse(
         access_token=access_token,
-        refresh_token=new_refresh_token,
+        refresh_token=refresh_data.refresh_token,  # Return the same refresh token
         token_type="bearer",
         expires_in=settings.access_token_expire_minutes
         * 60,  # Convert minutes to seconds

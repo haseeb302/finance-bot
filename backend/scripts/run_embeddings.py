@@ -78,7 +78,7 @@ async def get_llama_embedding(text: str) -> List[float]:
         if not settings.pinecone_api_key:
             raise ValueError("PINECONE_API_KEY is not set in environment variables")
 
-        # Pinecone Inference API endpoint (latest 2025-10 version)
+        # Pinecone Inference API endpoint
         api_url = "https://api.pinecone.io/embed"
         headers = {
             "Api-Key": settings.pinecone_api_key,
