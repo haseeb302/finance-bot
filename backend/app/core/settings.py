@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     # Pinecone Configuration
     pinecone_api_key: str = os.getenv("PINECONE_API_KEY")
     pinecone_index_name: str = os.getenv("PINECONE_INDEX_NAME")
+    pinecone_dimension: int = os.getenv("PINECONE_DIMENSION")
+    pinecone_embeddings_model: str = os.getenv("PINECONE_EMBEDDINGS_MODEL")
 
     # Redis Configuration
     redis_url: str = os.getenv("REDIS_URL")
@@ -60,6 +62,11 @@ class Settings(BaseSettings):
     # Pagination
     default_page_size: int = os.getenv("DEFAULT_PAGE_SIZE")
     max_page_size: int = os.getenv("MAX_PAGE_SIZE")
+
+    # Chat History Context
+    chat_history_context_messages: int = int(
+        os.getenv("CHAT_HISTORY_CONTEXT_MESSAGES", "10")
+    )
 
     # RAG
     similarity_threshold: float = os.getenv("SIMILARITY_THRESHOLD")

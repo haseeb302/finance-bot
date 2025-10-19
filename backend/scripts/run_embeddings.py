@@ -21,43 +21,75 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
-def chunk_text(text: str, chunk_size: int = 800, overlap: int = 100) -> List[str]:
+def chunk_text(text: str, chunk_size: int = 128, overlap: int = 20) -> List[str]:
     """
-    Split text into overlapping chunks for better context preservation.
+    Split text into paragraph-based chunks. Each paragraph becomes a chunk.
+    This ensures semantic coherence and better retrieval.
 
     Args:
         text: Input text to chunk
-        chunk_size: Maximum characters per chunk
-        overlap: Number of characters to overlap between chunks
+        chunk_size: Maximum characters per chunk (ignored for paragraph-based)
+        overlap: Number of characters to overlap between chunks (ignored for paragraph-based)
 
     Returns:
         List of text chunks
     """
-    if len(text) <= chunk_size:
-        return [text]
+    # Clean and normalize text
+    text = text.strip()
+    print(f"Total text length: {len(text)} characters")
+
+    # Split by double newlines to get paragraphs
+    paragraphs = text.split("\n\n")
 
     chunks = []
-    start = 0
+    chunk_count = 0
 
-    while start < len(text):
-        end = start + chunk_size
+    for paragraph in paragraphs:
+        # Clean each paragraph
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
 
-        # Try to break at sentence boundary
-        if end < len(text):
-            # Look for sentence endings within the last 100 characters
-            sentence_end = text.rfind(".", start, end)
-            if sentence_end > start + chunk_size // 2:
-                end = sentence_end + 1
+        # If paragraph is too long, split it further by single newlines
+        if len(paragraph) > 500:  # If paragraph is very long, split by single newlines
+            lines = paragraph.split("\n")
+            current_chunk = ""
 
-        chunk = text[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
 
-        # Move start position with overlap
-        start = end - overlap
-        if start >= len(text):
-            break
+                # If adding this line would make chunk too long, save current chunk
+                if current_chunk and len(current_chunk + " " + line) > 300:
+                    if current_chunk:
+                        chunks.append(current_chunk.strip())
+                        chunk_count += 1
+                        print(
+                            f"Chunk {chunk_count}: {len(current_chunk)} chars - '{current_chunk[:50]}...'"
+                        )
+                    current_chunk = line
+                else:
+                    current_chunk = (
+                        current_chunk + " " + line if current_chunk else line
+                    )
 
+            # Add the last chunk
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+                chunk_count += 1
+                print(
+                    f"Chunk {chunk_count}: {len(current_chunk)} chars - '{current_chunk[:50]}...'"
+                )
+        else:
+            # Paragraph is reasonable size, use as-is
+            chunks.append(paragraph)
+            chunk_count += 1
+            print(
+                f"Chunk {chunk_count}: {len(paragraph)} chars - '{paragraph[:50]}...'"
+            )
+
+    print(f"Total chunks created: {len(chunks)}")
     return chunks
 
 
@@ -69,7 +101,7 @@ async def get_llama_embedding(text: str) -> List[float]:
         text: Text to embed
 
     Returns:
-        Embedding vector (1024 dimensions)
+        Embedding vector
     """
     try:
         import httpx
@@ -86,14 +118,23 @@ async def get_llama_embedding(text: str) -> List[float]:
             "X-Pinecone-API-Version": "2025-10",
         }
         payload = {
-            "model": "llama-text-embed-v2",
-            "parameters": {"input_type": "passage", "truncate": "END"},
+            "model": settings.pinecone_embeddings_model,
+            "parameters": {
+                "input_type": "passage",
+                "truncate": "END",  # Use END truncation (NONE might not be supported)
+            },
             "inputs": [{"text": text}],
         }
 
         async with httpx.AsyncClient() as client:
             response = await client.post(api_url, json=payload, headers=headers)
-            response.raise_for_status()
+
+            if response.status_code != 200:
+                error_text = response.text
+                logger.error(f"Pinecone API error {response.status_code}: {error_text}")
+                raise Exception(
+                    f"Pinecone API error {response.status_code}: {error_text}"
+                )
 
             result = response.json()
 
@@ -102,9 +143,9 @@ async def get_llama_embedding(text: str) -> List[float]:
 
             embedding = result["data"][0]["values"]
 
-            if len(embedding) != 1024:
+            if len(embedding) != settings.pinecone_dimension:
                 raise ValueError(
-                    f"Invalid embedding dimension: {len(embedding)}, expected 1024"
+                    f"Invalid embedding dimension: {len(embedding)}, expected {settings.pinecone_dimension}"
                 )
 
             logger.debug(f"Generated embedding with {len(embedding)} dimensions")

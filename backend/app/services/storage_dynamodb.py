@@ -208,6 +208,39 @@ class DynamoDBStorageService:
             )
             return None
 
+    async def get_chat_history_for_context(
+        self, chat_id: str, limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """Get recent chat messages for context (last N messages)."""
+        try:
+            # Get all messages first (reuse existing logic)
+            all_messages = await self.db.get_chat_messages(chat_id, 1000)
+
+            # Get the last N messages (most recent)
+            recent_messages = (
+                all_messages[-limit:] if len(all_messages) > limit else all_messages
+            )
+
+            # Convert to the format expected by RAG
+            chat_history = []
+            for message in recent_messages:
+                chat_history.append(
+                    {"role": message["role"], "content": message["content"]}
+                )
+
+            logger.info(
+                f"Retrieved {len(chat_history)} messages for chat context",
+                chat_id=chat_id,
+                total_messages=len(all_messages),
+            )
+            return chat_history
+
+        except Exception as e:
+            logger.error(
+                "Failed to get chat history for context", error=str(e), chat_id=chat_id
+            )
+            return []
+
     async def get_chat_messages(
         self, chat_id: str, page: int = 1, page_size: int = settings.default_page_size
     ) -> PaginatedMessages:

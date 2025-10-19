@@ -34,13 +34,22 @@ async def get_pinecone_embedding(text: str) -> List[float]:
         }
         payload = {
             "model": "llama-text-embed-v2",
-            "parameters": {"input_type": "passage", "truncate": "END"},
+            "parameters": {
+                "input_type": "passage",
+                "truncate": "END",  # Use END truncation (NONE might not be supported)
+            },
             "inputs": [{"text": text}],
         }
 
         async with httpx.AsyncClient() as client:
             response = await client.post(api_url, json=payload, headers=headers)
-            response.raise_for_status()
+
+            if response.status_code != 200:
+                error_text = response.text
+                print(f"Pinecone API error {response.status_code}: {error_text}")
+                raise Exception(
+                    f"Pinecone API error {response.status_code}: {error_text}"
+                )
 
             result = response.json()
 
@@ -82,17 +91,29 @@ class RAGService:
             # Step 1: Generate embedding for the query using Pinecone
             query_embedding = await get_pinecone_embedding(query)
 
-            # Step 2: Retrieve similar documents from Pinecone
+            # Step 2: Retrieve similar documents from Pinecone (get more for better filtering)
             similar_docs = await self.pinecone_service.search_similar_documents(
-                query_vector=query_embedding, top_k=top_k
+                query_vector=query_embedding,
+                top_k=top_k * 2,  # Get more documents for better filtering
             )
 
-            # Step 3: Filter documents by similarity threshold
-            relevant_docs = [
-                doc
-                for doc in similar_docs
-                if doc.get("score", 0) >= self.similarity_threshold
-            ]
+            # Step 3: Filter documents by similarity threshold and content relevance
+            relevant_docs = []
+            for doc in similar_docs:
+                score = doc.get("score", 0)
+                if score >= self.similarity_threshold:
+                    # Additional content-based filtering
+                    content = doc.get("metadata", {}).get("text", "").lower()
+                    query_lower = query.lower()
+
+                    # Check for keyword matches (boost relevance)
+                    keyword_matches = sum(
+                        1 for word in query_lower.split() if word in content
+                    )
+                    if (
+                        keyword_matches > 0 or score > 0.7
+                    ):  # Lower threshold for high keyword matches
+                        relevant_docs.append(doc)
 
             # Log similarity scores for debugging
             if similar_docs:
@@ -100,6 +121,11 @@ class RAGService:
                 print(
                     f"Similarity scores: {scores}, threshold: {self.similarity_threshold}, relevant: {len(relevant_docs)}"
                 )
+                print(f"Query: {query}")
+                for i, doc in enumerate(relevant_docs[:3]):  # Show top 3 relevant docs
+                    print(
+                        f"Doc {i+1}: {doc.get('metadata', {}).get('text', '')[:100]}... (score: {doc.get('score', 0)})"
+                    )
 
             # Step 4: Prepare context from retrieved documents
             context = self._prepare_context(relevant_docs)
@@ -130,30 +156,56 @@ class RAGService:
             raise Exception(f"RAG generation failed: {str(e)}")
 
     def _prepare_context(self, documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Prepare context from retrieved documents."""
+        """Prepare context from retrieved documents with better formatting."""
         context = []
         for doc in documents:
             metadata = doc.get("metadata", {})
-            context.append(
-                {
-                    "title": metadata.get("source_file", "Unknown"),
-                    "content": metadata.get("text", ""),
-                    "source": metadata.get("source_file", ""),
-                    "category": metadata.get("category", ""),
-                    "similarity": doc.get("score", 0),
-                }
-            )
+            content = metadata.get("text", "").strip()
+
+            # Only include substantial content
+            if len(content) > 20:
+                context.append(
+                    {
+                        "title": metadata.get("source_file", "Unknown"),
+                        "content": content,
+                        "source": metadata.get("source_file", ""),
+                        "category": metadata.get("category", ""),
+                        "similarity": doc.get("score", 0),
+                    }
+                )
+
+        # Sort by similarity score (highest first)
+        context.sort(key=lambda x: x["similarity"], reverse=True)
+
+        print(f"Prepared context with {len(context)} documents")
         return context
 
     def _prepare_messages(
         self, query: str, chat_history: Optional[List[Dict[str, str]]] = None
     ) -> List[Dict[str, str]]:
-        """Prepare messages for OpenAI."""
+        """Prepare messages for OpenAI with chat history context."""
         messages = []
 
-        # Add chat history if provided
+        # Add system message with context about being a financial assistant
+        system_message = {
+            "role": "system",
+            "content": "You are a helpful financial assistant. Use the provided context and chat history to give accurate, helpful responses about financial topics. If you don't know something, say so clearly.",
+        }
+        messages.append(system_message)
+
+        # Add chat history if provided (already in chronological order)
         if chat_history:
-            messages.extend(chat_history)
+            # Limit chat history to avoid token limits (keep last 8 messages from history)
+            limited_history = (
+                chat_history[-8:] if len(chat_history) > 8 else chat_history
+            )
+            messages.extend(limited_history)
+            print(f"Added {len(limited_history)} messages from chat history to context")
+            print(
+                f"Chat history preview: {[msg['role'] + ': ' + msg['content'][:50] + '...' for msg in limited_history]}"
+            )
+        else:
+            print("No chat history provided for context")
 
         # Add current query
         messages.append({"role": "user", "content": query})

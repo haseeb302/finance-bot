@@ -333,13 +333,20 @@ async def send_message(
                 detail="Failed to save user message",
             )
 
+        # Get chat history for context
+        chat_history = await storage_service.get_chat_history_for_context(
+            chat_id, settings.chat_history_context_messages
+        )
+        logger.info(f"Retrieved {len(chat_history)} messages for context")
+        print(f"Chat history for context: {chat_history}")
+
         # Get AI response using RAG
         try:
             logger.info(f"Starting RAG generation for message: {message_text[:50]}...")
             # Use RAG service to get context and generate response
             ai_response = await rag_service.generate_response_with_rag(
                 query=message_text,
-                chat_history=None,  # Could add chat history here
+                chat_history=chat_history,
                 top_k=5,
             )
             logger.info(f"RAG generation completed successfully for chat {chat_id}")
