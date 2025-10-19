@@ -116,7 +116,7 @@ npm run dev
 
 ## 🌐 Production Deployment
 
-### Option 1: AWS App Runner (Recommended)
+### AWS App Runner
 
 #### 1. Prepare for Deployment
 
