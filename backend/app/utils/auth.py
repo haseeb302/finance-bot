@@ -128,25 +128,10 @@ async def get_current_user_optional(
         HTTPBearer(auto_error=False)
     ),
 ) -> Optional[dict]:
-    """Get current user if authenticated, otherwise return None."""
-    if not credentials:
-        return None
-
-    try:
-        token = credentials.credentials
-        payload = verify_token(token, "access")
-        user_id = payload.get("sub")
-
-        if user_id is None:
-            return None
-
-        user = await storage_service.get_user_by_id(user_id)
-        if user is None or not user.get("is_active", True):
-            return None
-
-        return user
-    except:
-        return None
+    """Get current user if authenticated, otherwise return None. (DEPRECATED - use get_current_user_optional_from_session)"""
+    # This function is kept for backward compatibility but should be replaced
+    # with get_current_user_optional_from_session for consistency
+    return await get_current_user_optional_from_session(credentials)
 
 
 # Session-based authentication functions
@@ -200,7 +185,16 @@ async def get_current_user_optional_from_session(
         HTTPBearer(auto_error=False)
     ),
 ) -> Optional[dict]:
-    """Get current user if authenticated via session, otherwise return None."""
+    """Get current user if authenticated via session, otherwise return None.
+
+    This function properly handles session expiry and will return None when:
+    - No credentials provided
+    - Token is expired or invalid
+    - User not found or inactive
+    - Any other authentication error
+
+    The frontend should handle None responses by logging out the user.
+    """
     if not credentials:
         return None
 
@@ -210,16 +204,24 @@ async def get_current_user_optional_from_session(
         user_id = payload.get("sub")
 
         if user_id is None:
+            print("No user_id in token payload")
             return None
 
         user = await storage_service.get_user_by_id(user_id)
-        if user is None or not user.get("is_active", True):
+        if user is None:
+            print(f"User not found for user_id: {user_id}")
             return None
 
-        # Update session last activity - find session by access_token
-        # For now, we'll skip this update since we don't have session_id in token
-        # TODO: Implement session tracking by access_token if needed
+        if not user.get("is_active", True):
+            print(f"User {user_id} is inactive")
+            return None
 
         return user
-    except:
+    except HTTPException as e:
+        # Token is expired, invalid, or malformed - user should be logged out
+        print(f"Session validation failed: {e.detail}")
+        return None
+    except Exception as e:
+        # Log unexpected errors but don't expose them to client
+        print(f"Unexpected error in session validation: {str(e)}")
         return None

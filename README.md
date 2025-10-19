@@ -40,38 +40,7 @@ pip install -r requirements.txt
 
 ### 2. Configure Environment
 
-Create `.env.local` file:
-
-```bash
-# DynamoDB Configuration (Local)
-DYNAMODB_ENDPOINT_URL=http://localhost:8001
-DYNAMODB_REGION=us-east-1
-DYNAMODB_ACCESS_KEY=local
-DYNAMODB_SECRET_KEY=local
-DYNAMODB_TABLE_PREFIX=
-
-# JWT Configuration
-SECRET_KEY=your-super-secret-key-here-make-it-long-and-random
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=2
-REFRESH_TOKEN_EXPIRE_MINUTES=5
-
-# OpenAI Configuration
-OPENAI_API_KEY=sk-your-openai-api-key
-OPENAI_MODEL=gpt-4-turbo-preview
-OPENAI_EMBEDDING_MODEL=text-embedding-3-large
-
-# Pinecone Configuration
-PINECONE_API_KEY=your-pinecone-api-key
-PINECONE_INDEX_NAME=your-pinecone-index-name
-
-# CORS Configuration
-ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:3000
-
-# Pagination
-DEFAULT_PAGE_SIZE=3
-MAX_PAGE_SIZE=3
-```
+Create `.env.local` file by using `.env.example`
 
 ### 3. Start Local DynamoDB
 

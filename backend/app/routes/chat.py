@@ -18,9 +18,8 @@ from app.services.storage_dynamodb import storage_service
 from app.core.settings import settings
 from app.utils.auth import (
     get_current_active_user,
-    get_current_user_optional,
-    get_current_user_from_session,
     get_current_user_optional_from_session,
+    get_current_user_from_session,
 )
 from app.services.openai import openai_service
 from app.services.rag import rag_service
@@ -31,6 +30,15 @@ security = HTTPBearer()
 logger = structlog.get_logger(__name__)
 
 
+def require_authentication(current_user: Optional[dict]) -> dict:
+    """Helper function to check if user is authenticated, raises 401 if not."""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
+        )
+    return current_user
+
+
 @router.get("/", response_model=PaginatedChats)
 async def get_chats(
     page: int = 1,
@@ -38,11 +46,7 @@ async def get_chats(
     current_user: Optional[dict] = Depends(get_current_user_optional_from_session),
 ):
     """Get user's chats with pagination."""
-    if not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required to view chats",
-        )
+    current_user = require_authentication(current_user)
 
     try:
         chats = await storage_service.get_user_chats(
@@ -98,16 +102,11 @@ async def create_chat(
 
 @router.get("/{chat_id}", response_model=ChatResponse)
 async def get_chat(
-    chat_id: str, current_user: Optional[dict] = Depends(get_current_user_optional)
+    chat_id: str,
+    current_user: Optional[dict] = Depends(get_current_user_optional_from_session),
 ):
     """Get specific chat by ID."""
-    if not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required to view chat",
-        )
-
-    """Get specific chat by ID."""
+    current_user = require_authentication(current_user)
     try:
         chat = await storage_service.get_chat_by_id(chat_id)
 
@@ -198,9 +197,12 @@ async def update_chat(
 
 @router.delete("/{chat_id}")
 async def delete_chat(
-    chat_id: str, current_user: Optional[dict] = Depends(get_current_user_optional)
+    chat_id: str,
+    current_user: Optional[dict] = Depends(get_current_user_optional_from_session),
 ):
     """Delete a chat."""
+    current_user = require_authentication(current_user)
+
     try:
         # Check if chat exists and user has access
         chat = await storage_service.get_chat_by_id(chat_id)
@@ -209,11 +211,7 @@ async def delete_chat(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
             )
 
-        if (
-            chat.get("user_id")
-            and current_user
-            and chat["user_id"] != current_user["user_id"]
-        ):
+        if chat.get("user_id") and chat["user_id"] != current_user["user_id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this chat",
@@ -245,6 +243,8 @@ async def get_messages(
     current_user: Optional[dict] = Depends(get_current_user_optional_from_session),
 ):
     """Get chat messages with pagination."""
+    current_user = require_authentication(current_user)
+
     try:
         # Check if chat exists and user has access
         chat = await storage_service.get_chat_by_id(chat_id)
@@ -253,11 +253,7 @@ async def get_messages(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
             )
 
-        if (
-            chat.get("user_id")
-            and current_user
-            and chat["user_id"] != current_user["user_id"]
-        ):
+        if chat.get("user_id") and chat["user_id"] != current_user["user_id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this chat",
