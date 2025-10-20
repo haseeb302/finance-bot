@@ -35,6 +35,9 @@ apiClient.interceptors.request.use(
       window.location.href = "/";
     }
 
+    // Ensure ngrok-skip-browser-warning header is always present
+    config.headers["ngrok-skip-browser-warning"] = "true";
+
     return config;
   },
   (error) => {
