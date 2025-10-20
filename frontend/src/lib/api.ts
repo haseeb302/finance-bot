@@ -16,12 +16,24 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const tokens = getStoredTokens();
+
+    // Check if this is an auth endpoint that doesn't require authentication
+    const isAuthEndpoint =
+      config.url?.includes("/auth/") &&
+      (config.url?.includes("/login") ||
+        config.url?.includes("/register") ||
+        config.url?.includes("/signin") ||
+        config.url?.includes("/forgot-password") ||
+        config.url?.includes("/reset-password"));
+
     if (tokens?.access_token) {
       config.headers.Authorization = `Bearer ${tokens.access_token}`;
-    } else {
+    } else if (!isAuthEndpoint) {
+      // Only redirect if it's not an auth endpoint and no tokens exist
       clearStoredTokens();
       window.location.href = "/";
     }
+
     return config;
   },
   (error) => {
@@ -37,8 +49,21 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle 401 errors (token expired)
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Check if this is an auth endpoint
+    const isAuthEndpoint =
+      originalRequest?.url?.includes("/auth/") &&
+      (originalRequest?.url?.includes("/login") ||
+        originalRequest?.url?.includes("/register") ||
+        originalRequest?.url?.includes("/signin") ||
+        originalRequest?.url?.includes("/forgot-password") ||
+        originalRequest?.url?.includes("/reset-password"));
+
+    // Handle 401 errors (token expired) - but not for auth endpoints
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
       originalRequest._retry = true;
 
       try {
@@ -52,9 +77,11 @@ apiClient.interceptors.response.use(
           return apiClient(originalRequest);
         }
       } catch (refreshError) {
-        // Refresh failed, redirect to home
-        clearStoredTokens();
-        window.location.href = "/";
+        // Refresh failed, redirect to home only if not an auth endpoint
+        if (!isAuthEndpoint) {
+          clearStoredTokens();
+          window.location.href = "/";
+        }
         return Promise.reject(refreshError);
       }
     }
