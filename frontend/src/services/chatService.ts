@@ -36,8 +36,29 @@ export class ChatService {
       const response = await api.get<PaginatedChats>(API_ENDPOINTS.CHAT.CHATS, {
         params,
       });
+
+      // Ensure the response has the expected structure
+      if (!response.data || typeof response.data !== "object") {
+        console.error("Invalid response structure:", response.data);
+        return {
+          chats: [],
+          total: 0,
+          page: 1,
+          page_size: 10,
+          has_next: false,
+          has_previous: false,
+        };
+      }
+
+      // Ensure chats is an array
+      if (!Array.isArray(response.data.chats)) {
+        console.error("Chats is not an array:", response.data.chats);
+        response.data.chats = [];
+      }
+
       return response.data;
     } catch (error) {
+      console.error("Error in getChats:", error);
       throw this.handleChatError(error);
     }
   }

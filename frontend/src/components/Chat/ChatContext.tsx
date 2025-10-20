@@ -67,13 +67,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         page: 1,
         page_size: CONSTANTS.DEFAULT_PAGE_SIZE,
       });
-      setChats(response.chats);
+
+      // Ensure response.chats exists and is an array
+      const chats = response?.chats || [];
+      setChats(chats);
 
       // Set the most recent chat as current if no current chat
-      if (response.chats.length > 0) {
+      if (chats.length > 0) {
         setCurrentChat((prevCurrentChat) => {
           if (!prevCurrentChat) {
-            return response.chats[0];
+            return chats[0];
           }
           return prevCurrentChat;
         });
@@ -82,6 +85,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       const errorMessage = getErrorMessage(error);
       setError(errorMessage);
       console.error("Error loading chats:", error);
+      // Set empty array as fallback
+      setChats([]);
     } finally {
       setIsChatLoading(false);
     }
@@ -206,7 +211,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
         // Update chats list
         setChats((prev) => {
-          const updatedChats = prev.filter((chat) => chat.id !== chatId);
+          const updatedChats = (prev || []).filter(
+            (chat) => chat.id !== chatId
+          );
 
           // If deleting current chat, switch to another one or create new
           if (currentChat?.id === chatId) {

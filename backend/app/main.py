@@ -67,7 +67,6 @@ app.add_middleware(
         "Access-Control-Request-Method",
         "Access-Control-Request-Headers",
     ],
-    expose_headers=["*"],
 )
 
 # Add trusted host middleware for production
