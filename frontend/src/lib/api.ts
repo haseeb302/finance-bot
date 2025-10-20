@@ -9,7 +9,7 @@ const apiClient: AxiosInstance = axios.create({
   timeout: config.api.timeout,
   headers: {
     "Content-Type": "application/json",
-    "ngrok-skip-browser-warning": "true", // Skip ngrok browser warning
+    // "ngrok-skip-browser-warning": "true", // Skip ngrok browser warning
   },
 });
 
@@ -34,9 +34,6 @@ apiClient.interceptors.request.use(
       clearStoredTokens();
       window.location.href = "/";
     }
-
-    // Ensure ngrok-skip-browser-warning header is always present
-    config.headers["ngrok-skip-browser-warning"] = "true";
 
     return config;
   },
