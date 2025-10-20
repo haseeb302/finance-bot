@@ -1,6 +1,6 @@
 # FinanceBot with DynamoDB
 
-A RAG-based financial chatbot built with FastAPI, DynamoDB, OpenAI, and Pinecone. Features JWT authentication, chat persistence, and scalable vector search for financial knowledge.
+A RAG-based financial chatbot built with FastAPI, DynamoDB, OpenAI, and Pinecone. Features JWT authentication, chat persistence, and scalable vector search for financial knowledge. 
 
 ## Flow
 
