@@ -1,6 +1,6 @@
 # FinanceBot with DynamoDB
 
-A RAG-based financial chatbot built with FastAPI, DynamoDB, OpenAI, and Pinecone. Features JWT authentication, chat persistence, and scalable vector search for financial knowledge. 
+A RAG-based financial chatbot built with FastAPI, DynamoDB, OpenAI, and Pinecone. Features JWT authentication, chat persistence, and scalable vector search for financial knowledge.
 
 ## Flow
 
@@ -72,7 +72,7 @@ python scripts/init_dynamodb.py
 
 ```bash
 # Create content embeddings in Pinecone
-python scripts/run_embeddings.sh
+scripts/run_embeddings.sh
 ```
 
 ### 6. Start Backend Server
@@ -89,6 +89,8 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 cd ../frontend
 npm install
 npm run dev
+
+cp env.example .env.local
 ```
 
 ### 8. Access Application
