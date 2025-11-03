@@ -29,6 +29,7 @@ const ChatInterface = () => {
       clearError();
     }
   }, [error, clearError]);
+
   return (
     <div className="flex w-full h-screen">
       {/* Chat History Sidebar - Only visible for authenticated users */}

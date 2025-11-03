@@ -1,5 +1,5 @@
 import openai
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncGenerator
 from app.core.settings import settings
 import json
 
@@ -48,6 +48,85 @@ class OpenAIService:
 
         except Exception as e:
             raise Exception(f"Failed to generate response: {str(e)}")
+
+    async def generate_response_stream(
+        self,
+        messages: List[Dict[str, str]],
+        context: Optional[List[Dict[str, Any]]] = None,
+        temperature: float = 0.3,
+        max_tokens: int = 1000,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Generate streaming response using OpenAI with RAG context.
+
+        Yields:
+            Dict with keys:
+                - type: "token" for content chunks, "done" for final chunk
+                - content: token content (for type="token")
+                - tokens_used: total tokens (for type="done")
+                - prompt_tokens: prompt tokens (for type="done")
+                - completion_tokens: completion tokens (for type="done")
+                - model: model name (for type="done")
+        """
+        try:
+            # Prepare system message with context
+            system_message = self._prepare_system_message(context)
+
+            # Prepare messages for OpenAI
+            openai_messages = [{"role": "system", "content": system_message}]
+            openai_messages.extend(messages)
+
+            # Generate streaming response
+            stream = await self.client.chat.completions.create(
+                model=self.model,
+                messages=openai_messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            )
+
+            # Track accumulated content
+            accumulated_content = ""
+            finish_reason = None
+
+            # Process streaming chunks
+            async for chunk in stream:
+                if not chunk.choices:
+                    continue
+
+                delta = chunk.choices[0].delta
+
+                # Check if there's content in this chunk
+                if delta.content:
+                    accumulated_content += delta.content
+                    # Yield token chunk
+                    yield {
+                        "type": "token",
+                        "content": delta.content,
+                    }
+
+                # Check if this is the final chunk (has finish_reason)
+                if chunk.choices[0].finish_reason:
+                    finish_reason = chunk.choices[0].finish_reason
+
+                    # Note: OpenAI streaming API doesn't provide usage information in chunks
+                    # Usage tokens would need to be calculated separately if needed
+                    # For now, we'll provide None/0 for token counts in streaming mode
+                    yield {
+                        "type": "done",
+                        "content": accumulated_content,
+                        "tokens_used": None,  # Not available in streaming mode
+                        "prompt_tokens": None,
+                        "completion_tokens": None,
+                        "model": self.model,
+                        "finish_reason": finish_reason,
+                    }
+
+        except Exception as e:
+            # Yield error in stream format
+            yield {
+                "type": "error",
+                "error": f"Failed to generate streaming response: {str(e)}",
+            }
 
     def _prepare_system_message(
         self, context: Optional[List[Dict[str, Any]]] = None

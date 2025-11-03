@@ -7,7 +7,7 @@ import {
   useCallback,
 } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Chat, Message, ChatMessageRequest } from "../../types/chat";
+import { Chat, Message, ChatMessageRequest, Source } from "../../types/chat";
 import { ChatService } from "../../services/chatService";
 import { getErrorMessage } from "../../lib/utils";
 import { CONSTANTS } from "../../lib/config";
@@ -52,7 +52,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const { isAuthenticated } = useAuth();
 
-  // Get welcome message (constant, no API call)
   const getWelcomeMessage = useCallback((): Message => {
     return ChatService.getWelcomeMessage();
   }, []);
@@ -254,7 +253,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     ]
   );
 
-  // Send message
+  // Send message with streaming
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || isLoading) return;
@@ -272,75 +271,131 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       setError(null);
 
+      // Create temporary assistant message for streaming
+      const tempAssistantId = `assistant-${Date.now()}`;
+      const tempAssistantMessage: Message = {
+        id: tempAssistantId,
+        chat_id: currentChat?.id || "temp",
+        role: "assistant",
+        content: "",
+        created_at: new Date().toISOString(),
+      };
+
+      // Add temporary assistant message
+      setMessages((prev) => [...prev, tempAssistantMessage]);
+
       try {
         const messageData: ChatMessageRequest = {
           message: text,
           chat_id: currentChat?.id === "temp" ? undefined : currentChat?.id,
         };
 
-        // Retry logic for network errors
-        let response;
-        let retryCount = 0;
-        const maxRetries = 2;
+        let accumulatedContent = "";
+        let finalSources: Source[] = [];
+        let finalChat: Chat | null = null;
+        let finalMessage: Message | null = null;
 
-        while (retryCount <= maxRetries) {
-          try {
-            response = await ChatService.sendMessage(messageData);
-            break; // Success, exit retry loop
-          } catch (error: unknown) {
-            if (
-              error &&
-              typeof error === "object" &&
-              "status_code" in error &&
-              "type" in error
-            ) {
-              const apiError = error as { status_code: number; type: string };
-              if (
-                apiError.status_code === 0 ||
-                apiError.type === "network_error"
-              ) {
-                // Network error, retry
-                retryCount++;
-                if (retryCount <= maxRetries) {
-                  await new Promise((resolve) =>
-                    setTimeout(resolve, 1000 * retryCount)
-                  ); // Exponential backoff
-                  continue;
-                }
+        await ChatService.sendMessageStream(
+          messageData,
+          (chunk) => {
+            if (chunk.type === "chat" && chunk.chat) {
+              // New chat created
+              finalChat = chunk.chat;
+              setCurrentChat(chunk.chat);
+              setChats((prev) => [chunk.chat!, ...prev]);
+            } else if (chunk.type === "context_retrieved" && chunk.sources) {
+              // Context retrieved, save sources
+              finalSources = chunk.sources;
+            } else if (chunk.type === "token" && chunk.content) {
+              // Token received, update accumulated content
+              accumulatedContent += chunk.content;
+              // Update temporary message in real-time
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === tempAssistantId
+                    ? { ...msg, content: accumulatedContent }
+                    : msg
+                )
+              );
+            } else if (chunk.type === "done" && chunk.message) {
+              // Stream complete, replace temporary message with final message
+              finalMessage = chunk.message;
+              if (chunk.sources) {
+                finalSources = chunk.sources;
               }
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === tempAssistantId
+                    ? {
+                        ...finalMessage!,
+                        metadata: {
+                          ...finalMessage!.metadata,
+                          sources: finalSources,
+                        },
+                      }
+                    : msg
+                )
+              );
+
+              // Update current chat if it's a new chat
+              if (finalChat && finalChat.id !== currentChat?.id) {
+                setCurrentChat(finalChat);
+              }
+            } else if (chunk.type === "error") {
+              // Handle error from stream
+              const errorContent =
+                chunk.error || chunk.message?.content || "An error occurred";
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === tempAssistantId
+                    ? {
+                        ...msg,
+                        content: chunk.message?.content || errorContent,
+                        metadata: chunk.message?.metadata,
+                      }
+                    : msg
+                )
+              );
+              setError(chunk.error || "An error occurred");
             }
-            throw error; // Re-throw if not network error or max retries reached
+            // Note: "context_retrieving" and "context_retrieved" are informational
+            // and handled above if needed for UI feedback
+          },
+          (error) => {
+            // Handle streaming error
+            const errorMessage = getErrorMessage(error);
+            setError(errorMessage);
+
+            // Update temporary message with error
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === tempAssistantId
+                  ? {
+                      ...msg,
+                      content:
+                        "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
+                    }
+                  : msg
+              )
+            );
           }
-        }
-
-        // Validate response structure
-        if (!response || !response.message) {
-          throw new Error("Invalid response from server");
-        }
-
-        // Add bot response
-        setMessages((prev) => [...prev, response.message]);
-
-        // Update current chat if it's a new chat
-        if (response.chat && response.chat.id !== currentChat?.id) {
-          const chat = response.chat;
-          setCurrentChat(chat);
-          setChats((prev) => [chat, ...prev]);
-        }
+        );
       } catch (error) {
         const errorMessage = getErrorMessage(error);
         setError(errorMessage);
 
-        // Add error message
-        const errorMsg: Message = {
-          id: `error-${Date.now()}`,
-          chat_id: currentChat?.id || "temp",
-          role: "assistant",
-          content:
-            "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
-          created_at: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, errorMsg]);
+        // Update temporary message with error
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempAssistantId
+              ? {
+                  ...msg,
+                  content:
+                    "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
+                }
+              : msg
+          )
+        );
       } finally {
         setIsLoading(false);
       }

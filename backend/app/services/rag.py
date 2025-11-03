@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncGenerator
 from decimal import Decimal
 from app.services.openai import openai_service
 from app.services.pinecone import pinecone_service
@@ -25,7 +25,7 @@ async def get_pinecone_embedding(text: str) -> List[float]:
         if not settings.pinecone_api_key:
             raise ValueError("PINECONE_API_KEY is not set in environment variables")
 
-        # Pinecone Inference API endpoint (latest 2025-10 version)
+        # Pinecone Inference API endpoint
         api_url = "https://api.pinecone.io/embed"
         headers = {
             "Api-Key": settings.pinecone_api_key,
@@ -155,6 +155,100 @@ class RAGService:
         except Exception as e:
             raise Exception(f"RAG generation failed: {str(e)}")
 
+    async def generate_response_with_rag_stream(
+        self,
+        query: str,
+        chat_history: Optional[List[Dict[str, str]]] = None,
+        top_k: int = None,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Generate streaming response using RAG (Retrieval-Augmented Generation).
+
+        Yields:
+            Dict with keys:
+                - type: "context_retrieving" for context retrieval start
+                - type: "context_retrieved" for context with sources
+                - type: "token" for OpenAI content chunks
+                - type: "done" for final chunk with complete response
+                - type: "error" for errors
+        """
+        try:
+            # Set default top_k
+            if top_k is None:
+                top_k = self.default_top_k
+
+            # Yield context retrieval start event
+            yield {"type": "context_retrieving"}
+
+            # Step 1: Generate embedding for the query using Pinecone
+            query_embedding = await get_pinecone_embedding(query)
+
+            # Step 2: Retrieve similar documents from Pinecone
+            similar_docs = await self.pinecone_service.search_similar_documents(
+                query_vector=query_embedding,
+                top_k=top_k * 2,  # Get more documents for better filtering
+            )
+
+            # Step 3: Filter documents by similarity threshold and content relevance
+            relevant_docs = []
+            for doc in similar_docs:
+                score = doc.get("score", 0)
+                if score >= self.similarity_threshold:
+                    # Additional content-based filtering
+                    content = doc.get("metadata", {}).get("text", "").lower()
+                    query_lower = query.lower()
+
+                    # Check for keyword matches (boost relevance)
+                    keyword_matches = sum(
+                        1 for word in query_lower.split() if word in content
+                    )
+                    if (
+                        keyword_matches > 0 or score > 0.7
+                    ):  # Lower threshold for high keyword matches
+                        relevant_docs.append(doc)
+
+            # Log similarity scores for debugging
+            if similar_docs:
+                scores = [doc.get("score", 0) for doc in similar_docs]
+                print(
+                    f"Similarity scores: {scores}, threshold: {self.similarity_threshold}, relevant: {len(relevant_docs)}"
+                )
+                print(f"Query: {query}")
+                for i, doc in enumerate(relevant_docs[:3]):  # Show top 3 relevant docs
+                    print(
+                        f"Doc {i+1}: {doc.get('metadata', {}).get('text', '')[:100]}... (score: {doc.get('score', 0)})"
+                    )
+
+            # Step 4: Prepare context from retrieved documents
+            context = self._prepare_context(relevant_docs)
+
+            # Step 5: Prepare sources for response (contains Decimal similarity scores)
+            sources = self._prepare_sources(relevant_docs)
+
+            # Yield original sources with Decimal - caller will convert to float for JSON response
+            # but can use Decimal for DB storage
+            yield {
+                "type": "context_retrieved",
+                "sources": sources,  # Contains Decimal similarity scores
+                "context_docs": len(relevant_docs),
+            }
+
+            # Step 7: Prepare messages for OpenAI
+            messages = self._prepare_messages(query, chat_history)
+
+            # Step 8: Stream OpenAI response
+            async for chunk in self.openai_service.generate_response_stream(
+                messages=messages, context=context
+            ):
+                # Pass through OpenAI streaming chunks
+                yield chunk
+
+        except Exception as e:
+            # Yield error in stream format
+            yield {
+                "type": "error",
+                "error": f"RAG streaming failed: {str(e)}",
+            }
+
     def _prepare_context(self, documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Prepare context from retrieved documents with better formatting."""
         context = []
@@ -271,10 +365,6 @@ class RAGService:
     ) -> Dict[str, Any]:
         """Update a document in the knowledge base."""
         try:
-            # Get existing document metadata
-            # Note: In a real implementation, you'd fetch this from your database
-            # For now, we'll assume the metadata is provided
-
             # Generate new embedding if content changed
             if content:
                 embedding = await get_pinecone_embedding(content)

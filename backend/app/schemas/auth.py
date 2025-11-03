@@ -21,9 +21,9 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(UserBase):
-    id: str  # Changed from int to str for UUID
+    id: str
     is_active: bool
-    is_verified: bool = False  # Added default value
+    is_verified: bool = False
     created_at: datetime
     updated_at: Optional[datetime] = None
     last_login: Optional[datetime] = None

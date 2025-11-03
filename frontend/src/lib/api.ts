@@ -27,10 +27,13 @@ apiClient.interceptors.request.use(
         config.url?.includes("/forgot-password") ||
         config.url?.includes("/reset-password"));
 
+    // Check if this is an endpoint that allows anonymous access
+    const allowsAnonymousAccess = config.url?.includes("/chat/message"); // Allow anonymous users to send messages
+
     if (tokens?.access_token) {
       config.headers.Authorization = `Bearer ${tokens.access_token}`;
-    } else if (!isAuthEndpoint) {
-      // Only redirect if it's not an auth endpoint and no tokens exist
+    } else if (!isAuthEndpoint && !allowsAnonymousAccess) {
+      // Only redirect if it's not an auth endpoint, doesn't allow anonymous access, and no tokens exist
       clearStoredTokens();
       window.location.href = "/";
     }
@@ -59,11 +62,16 @@ apiClient.interceptors.response.use(
         originalRequest?.url?.includes("/forgot-password") ||
         originalRequest?.url?.includes("/reset-password"));
 
-    // Handle 401 errors (token expired) - but not for auth endpoints
+    // Check if this is an endpoint that allows anonymous access
+    const allowsAnonymousAccess =
+      originalRequest?.url?.includes("/chat/message");
+
+    // Handle 401 errors (token expired) - but not for auth endpoints or anonymous endpoints
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      !isAuthEndpoint
+      !isAuthEndpoint &&
+      !allowsAnonymousAccess
     ) {
       originalRequest._retry = true;
 
@@ -78,8 +86,8 @@ apiClient.interceptors.response.use(
           return apiClient(originalRequest);
         }
       } catch (refreshError) {
-        // Refresh failed, redirect to home only if not an auth endpoint
-        if (!isAuthEndpoint) {
+        // Refresh failed, redirect to home only if not an auth endpoint or anonymous endpoint
+        if (!isAuthEndpoint && !allowsAnonymousAccess) {
           clearStoredTokens();
           window.location.href = "/";
         }

@@ -111,10 +111,6 @@ async def signin(login_data: LoginRequest):
                 detail="Failed to create session",
             )
 
-        # Refresh token is already stored in the session during creation
-        print(f"Session created with refresh token: {session['session_id']}")
-        print(f"Refresh token: {refresh_token[:20]}...")
-
         return TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
@@ -184,7 +180,6 @@ async def refresh_token(refresh_data: RefreshTokenRequest):
 
     # Keep the same refresh token and session expiry
     # The refresh token should expire based on its original creation time
-    print(f"Refreshed access token for session {refresh_token_obj.get('session_id')}")
     print(f"Refresh token will expire at: {refresh_token_obj.get('expires_at')}")
 
     return TokenResponse(
@@ -247,16 +242,12 @@ async def forgot_password(reset_data: PasswordResetRequest):
         # Don't reveal if email exists or not
         return {"message": "If the email exists, a password reset link has been sent"}
 
-    # TODO: Implement email sending logic
-    # For now, just return success message
     return {"message": "If the email exists, a password reset link has been sent"}
 
 
 @router.post("/reset-password")
 async def reset_password(reset_data: PasswordResetConfirm):
     """Reset password with token."""
-    # TODO: Implement password reset token verification
-    # For now, just return success message
     return {"message": "Password reset functionality not implemented yet"}
 
 

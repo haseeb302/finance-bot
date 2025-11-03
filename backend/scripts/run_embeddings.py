@@ -121,7 +121,7 @@ async def get_llama_embedding(text: str) -> List[float]:
             "model": settings.pinecone_embeddings_model,
             "parameters": {
                 "input_type": "passage",
-                "truncate": "END",  # Use END truncation (NONE might not be supported)
+                "truncate": "END",
             },
             "inputs": [{"text": text}],
         }

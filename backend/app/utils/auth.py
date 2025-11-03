@@ -128,9 +128,6 @@ async def get_current_user_optional(
         HTTPBearer(auto_error=False)
     ),
 ) -> Optional[dict]:
-    """Get current user if authenticated, otherwise return None. (DEPRECATED - use get_current_user_optional_from_session)"""
-    # This function is kept for backward compatibility but should be replaced
-    # with get_current_user_optional_from_session for consistency
     return await get_current_user_optional_from_session(credentials)
 
 
@@ -168,10 +165,6 @@ async def get_current_user_from_session(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
             )
-
-        # Update session last activity - find session by access_token
-        # For now, we'll skip this update since we don't have session_id in token
-        # TODO: Implement session tracking by access_token if needed
 
         print(f"Successfully authenticated user from session: {user_id}")
         return user

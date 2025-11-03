@@ -78,3 +78,25 @@ export interface ChatState {
   isLoading: boolean;
   error: string | null;
 }
+
+// Streaming types
+export type StreamChunkType =
+  | "context_retrieving"
+  | "context_retrieved"
+  | "token"
+  | "done"
+  | "error"
+  | "chat";
+
+export interface StreamChunk {
+  type: StreamChunkType;
+  content?: string;
+  sources?: Source[];
+  context_docs?: number;
+  message?: Message;
+  chat?: Chat;
+  error?: string;
+}
+
+export type StreamChunkHandler = (chunk: StreamChunk) => void;
+export type StreamErrorHandler = (error: Error) => void;

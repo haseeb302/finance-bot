@@ -1,5 +1,5 @@
 import { api } from "../lib/api";
-import { API_ENDPOINTS } from "../lib/config";
+import { API_ENDPOINTS, config } from "../lib/config";
 import {
   Chat,
   Message,
@@ -7,9 +7,13 @@ import {
   ChatMessageResponse,
   PaginatedMessages,
   PaginatedChats,
+  StreamChunk,
+  StreamChunkHandler,
+  StreamErrorHandler,
 } from "../types/chat";
 import { ApiResponse, PaginationParams } from "../types/api";
 import { WELCOME_MESSAGE } from "@/constants/welcomeMessage";
+import { getStoredTokens } from "../lib/api";
 
 export class ChatService {
   /**
@@ -139,6 +143,136 @@ export class ChatService {
     } catch (error) {
       throw this.handleChatError(error);
     }
+  }
+
+  /**
+   * Send message and stream AI response using Server-Sent Events (SSE)
+   * @param messageData - Message data including message text and optional chat_id
+   * @param onChunk - Callback function called for each stream chunk
+   * @param onError - Optional error handler callback
+   * @returns Promise that resolves when stream completes or rejects on error
+   */
+  static async sendMessageStream(
+    messageData: ChatMessageRequest,
+    onChunk: StreamChunkHandler,
+    onError?: StreamErrorHandler
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Get tokens for authorization
+      const tokens = getStoredTokens();
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (tokens?.access_token) {
+        headers.Authorization = `Bearer ${tokens.access_token}`;
+      }
+
+      // Make streaming request with stream: true
+      const requestBody = {
+        ...messageData,
+        stream: true,
+      };
+
+      fetch(`${config.api.baseURL}${API_ENDPOINTS.CHAT.MESSAGE}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(requestBody),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({
+              detail: `HTTP ${response.status}: ${response.statusText}`,
+            }));
+            throw new Error(errorData.detail || "Failed to start streaming");
+          }
+
+          if (!response.body) {
+            throw new Error("Response body is null");
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          const streaming = true;
+          try {
+            while (streaming) {
+              const { done, value } = await reader.read();
+
+              if (done) {
+                // Stream ended normally
+                resolve();
+                return;
+              }
+
+              // Decode chunk and add to buffer
+              buffer += decoder.decode(value, { stream: true });
+
+              // Process complete SSE events (end with \n\n)
+              const events = buffer.split("\n\n");
+              // Keep incomplete event in buffer
+              buffer = events.pop() || "";
+
+              for (const event of events) {
+                if (!event.trim()) continue;
+
+                // Parse SSE format: "data: {json}"
+                const lines = event.split("\n");
+                for (const line of lines) {
+                  if (line.startsWith("data: ")) {
+                    try {
+                      const jsonStr = line.substring(6); // Remove "data: " prefix
+                      const chunk: StreamChunk = JSON.parse(jsonStr);
+
+                      // Call handler for this chunk
+                      onChunk(chunk);
+
+                      // If this is an "error" chunk, reject immediately
+                      if (chunk.type === "error") {
+                        const error = new Error(
+                          chunk.error ||
+                            chunk.message?.content ||
+                            "Stream error occurred"
+                        );
+                        if (onError) {
+                          onError(error);
+                        }
+                        reject(error);
+                        return;
+                      }
+
+                      // If this is a "done" chunk, we can resolve (but continue reading until stream ends)
+                      // The handler will process the done chunk with the final message
+                    } catch (parseError) {
+                      console.error("Failed to parse SSE chunk:", parseError, {
+                        jsonStr: line.substring(6),
+                      });
+                      // Continue processing other chunks - don't fail the whole stream on one bad chunk
+                    }
+                  }
+                }
+              }
+            }
+          } catch (streamError) {
+            if (onError) {
+              onError(
+                streamError instanceof Error
+                  ? streamError
+                  : new Error(String(streamError))
+              );
+            }
+            reject(streamError);
+          } finally {
+            reader.releaseLock();
+          }
+        })
+        .catch((error) => {
+          if (onError) {
+            onError(error instanceof Error ? error : new Error(String(error)));
+          }
+          reject(error);
+        });
+    });
   }
 
   /**
