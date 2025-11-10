@@ -171,7 +171,7 @@ export class ChatService {
       // Make streaming request with stream: true
       const requestBody = {
         ...messageData,
-        stream: true,
+        stream: false,
       };
 
       fetch(`${config.api.baseURL}${API_ENDPOINTS.CHAT.MESSAGE}`, {
